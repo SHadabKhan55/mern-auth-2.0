@@ -4,6 +4,9 @@ const multer = require('multer')
 const fs = require('fs')
 const path = require('path')
 const {generateOTP,sendOtp} = require("../services/sendOtp")
+const {setUser} = require("../services/auth")
+
+
 
 //profile directory
 const profileFolder = path.join(__dirname,'/../profile')
@@ -127,8 +130,28 @@ const verifyOTP = async (req, res) => {
 
 //=========LOGIN=============
 
-const login = (req,res) => {
-    
+const login = async (req,res) => {
+    try {
+        
+        const user = await User.findOne({email:req.body.email})
+        if (!user) return res.status(404).json({message:"user not found",success:false})
+        const pass = req.body.password
+        const isMatch = await bcrypt.compare(pass,user.password)
+        if (!isMatch) return res.status(401).json({message:"password not match",success:false})
+        const token = setUser(user)    
+        res.cookie("uid", token, {
+            httpOnly: true,
+            secure: false,   
+            sameSite: "strict",
+            maxAge: 1000 * 60 * 60
+          });
+          
+
+        return res.status(200).json({message:"congrats login successfully",success:true})
+    } catch (error) {
+            return res.status(500).json({message:"server error",success:false})
+            
+        }
 }
 
 
@@ -140,5 +163,7 @@ module.exports = {
     signUp,
     upload,
     test,
-    verifyOTP
+    verifyOTP,
+    login
+
 }
